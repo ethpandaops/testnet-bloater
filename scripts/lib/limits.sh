@@ -92,7 +92,21 @@ process_deposits() {
     local deposit_contract
     deposit_contract=$(get_config "$CONFIG_FILE" ".networks.$network.deposit_contract")
     local fork_version
-    fork_version=$(get_config_default "$CONFIG_FILE" ".networks.$network.genesis_fork_version" "0x00000000")
+    fork_version=$(get_genesis_fork_version "$dora_url")
+    if [ -z "$fork_version" ]; then
+        echo "  WARNING: Could not fetch genesis fork version from Dora, skipping deposits"
+        return
+    fi
+    echo "  Genesis fork version: $fork_version"
+    local withdrawal_credentials
+    withdrawal_credentials=$(get_config_default "$CONFIG_FILE" ".networks.$network.operations.deposits.withdrawal_credentials" "0x00")
+    local withdrawal_address
+    withdrawal_address=$(get_config_default "$CONFIG_FILE" ".networks.$network.operations.deposits.withdrawal_address" "")
+
+    local withdrawal_args=""
+    if [ -n "$withdrawal_address" ]; then
+        withdrawal_args="--withdrawal-address $withdrawal_address"
+    fi
 
     echo "  Submitting $allowed deposits starting at index $last_index..."
     "$BLOATER_TOOL" run-deposits \
@@ -106,7 +120,9 @@ process_deposits() {
         --count "$allowed" \
         --batch-size "$batch_size" \
         --storage-interval "$storage_interval" \
-        --genesis-fork-version "$fork_version"
+        --genesis-fork-version "$fork_version" \
+        --withdrawal-credentials "$withdrawal_credentials" \
+        $withdrawal_args
 }
 
 # Process withdrawal requests for a network

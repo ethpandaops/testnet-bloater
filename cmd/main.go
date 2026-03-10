@@ -192,16 +192,30 @@ func newRunDepositsCmd(log *logrus.Logger) *cobra.Command {
 			batchSize, _ := cmd.Flags().GetUint64("batch-size")
 			storageInterval, _ := cmd.Flags().GetUint64("storage-interval")
 			forkVersion, _ := cmd.Flags().GetString("genesis-fork-version")
+			credPrefix, _ := cmd.Flags().GetString("withdrawal-credentials")
+			withdrAddr, _ := cmd.Flags().GetString("withdrawal-address")
+
+			var credByte byte
+			switch credPrefix {
+			case "0x01":
+				credByte = 0x01
+			case "0x02":
+				credByte = 0x02
+			default:
+				credByte = 0x00
+			}
 
 			runner, err := deposits.NewRunner(log, deposits.Config{
-				Mnemonic:           mnemonic,
-				DepositContract:    ethcommon.HexToAddress(depositContract),
-				DepositAmount:      depositAmount,
-				StartIndex:         startIndex,
-				Count:              count,
-				BatchSize:          batchSize,
-				StorageInterval:    storageInterval,
-				GenesisForkVersion: forkVersion,
+				Mnemonic:             mnemonic,
+				DepositContract:      ethcommon.HexToAddress(depositContract),
+				DepositAmount:        depositAmount,
+				StartIndex:           startIndex,
+				Count:                count,
+				BatchSize:            batchSize,
+				StorageInterval:      storageInterval,
+				GenesisForkVersion:   forkVersion,
+				WithdrawalCredPrefix: credByte,
+				WithdrawalAddress:    ethcommon.HexToAddress(withdrAddr),
 			}, trk)
 			if err != nil {
 				return fmt.Errorf("failed to create deposit runner: %w", err)
@@ -225,6 +239,8 @@ func newRunDepositsCmd(log *logrus.Logger) *cobra.Command {
 	cmd.Flags().Uint64("batch-size", 16, "Txs per batch")
 	cmd.Flags().Uint64("storage-interval", 50, "Update storage every N txs")
 	cmd.Flags().String("genesis-fork-version", "0x00000000", "Genesis fork version hex")
+	cmd.Flags().String("withdrawal-credentials", "0x00", "Withdrawal credential prefix (0x00, 0x01, 0x02)")
+	cmd.Flags().String("withdrawal-address", "", "Withdrawal address for 0x01/0x02 credentials")
 
 	return cmd
 }

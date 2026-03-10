@@ -129,10 +129,9 @@ func (r *Runner) Run(ctx context.Context) (uint64, error) {
 			batchLen := uint64(len(feeCalldatas))
 			newSubmitted := submitted + batchLen
 
-			// Build extra calls (storage update)
+			// Always append storage update to keep on-chain state current
 			var extraCalls []tracker.Call
-			needsStorageUpdate := newSubmitted%r.cfg.StorageInterval == 0 || i == r.cfg.Count-1
-			if needsStorageUpdate {
+			{
 				newCycleIdx := (r.cfg.CycleStartIndex + newSubmitted) % indexRange
 				stateCall, err := r.tracker.SetValuesCall(map[string]uint64{
 					tracker.KeyTotalWithdrawalRequests:  state[tracker.KeyTotalWithdrawalRequests] + newSubmitted,
@@ -147,7 +146,7 @@ func (r *Runner) Run(ctx context.Context) (uint64, error) {
 				}
 			}
 
-			r.log.Infof("submitting multicallFee batch of %d withdrawal requests...", batchLen)
+			r.log.Infof("submitting multicallFee batch of %d withdrawal requests (+ state update)...", batchLen)
 			err := r.tracker.MulticallFee(
 				ctx,
 				r.cfg.WithdrawalRequestContract,

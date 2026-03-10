@@ -4,7 +4,6 @@ networks:
     dora_url: "https://dora.hoodi.ethpandaops.io"
     wallet_privkey: "$BLOATER_PRIVKEY"
     validator_mnemonic: "$BLOATER_MNEMONIC"
-    genesis_fork_version: "0x10000910"
     storage_seed: "01"
     deposit_contract: "0x00000000219ab540356cBB839Cbe05303d7705Fa"
     withdrawal_request_contract: "0x00000961Ef480Eb55e80D19ad83579A64c007002"

@@ -1,5 +1,16 @@
 #!/bin/bash
-# Queue size helpers
+# Dora API and queue size helpers
+
+# Get genesis fork version from Dora (Phase0 fork version at epoch 0)
+get_genesis_fork_version() {
+    local dora_url="$1"
+    local response
+    response=$(curl -sf "${dora_url}/api/v1/network/forks" 2>/dev/null) || {
+        echo ""
+        return
+    }
+    echo "$response" | jq -r '.data.forks[] | select(.name == "Phase0") | .version // empty'
+}
 
 # Get deposit queue size from Dora API
 get_deposit_queue_size() {

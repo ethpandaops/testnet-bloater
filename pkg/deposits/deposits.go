@@ -28,14 +28,16 @@ func init() {
 
 // Config holds deposit generation configuration.
 type Config struct {
-	Mnemonic           string
-	DepositContract    ethcommon.Address
-	DepositAmount      uint64 // gwei
-	StartIndex         uint64
-	Count              uint64
-	BatchSize          uint64
-	StorageInterval    uint64
-	GenesisForkVersion string // hex, e.g. "0x00000000"
+	Mnemonic             string
+	DepositContract      ethcommon.Address
+	DepositAmount        uint64 // gwei
+	StartIndex           uint64
+	Count                uint64
+	BatchSize            uint64
+	StorageInterval      uint64
+	GenesisForkVersion   string            // hex, e.g. "0x00000000"
+	WithdrawalCredPrefix byte              // 0x00 (BLS), 0x01 (execution), 0x02
+	WithdrawalAddress    ethcommon.Address // used when prefix is 0x01 or 0x02
 }
 
 // Runner generates and submits deposit transactions.
@@ -127,9 +129,8 @@ func (r *Runner) Run(ctx context.Context) (uint64, error) {
 			batchLen := uint64(len(batch))
 			newSubmitted := submitted + batchLen
 
-			// Append storage update call to the batch
-			needsStorageUpdate := newSubmitted%r.cfg.StorageInterval == 0 || i == r.cfg.Count-1
-			if needsStorageUpdate {
+			// Always append storage update to keep on-chain state current
+			{
 				stateCall, err := r.tracker.SetValuesCall(map[string]uint64{
 					tracker.KeyTotalDeposits:         state[tracker.KeyTotalDeposits] + newSubmitted,
 					tracker.KeyLastDepositIndex:      r.cfg.StartIndex + newSubmitted,
@@ -143,7 +144,7 @@ func (r *Runner) Run(ctx context.Context) (uint64, error) {
 				}
 			}
 
-			r.log.Infof("submitting multicall batch of %d deposits...", batchLen)
+			r.log.Infof("submitting multicall batch of %d deposits (+ state update)...", batchLen)
 			err := r.tracker.Multicall(ctx, batch, 200000)
 			if err != nil {
 				return submitted, fmt.Errorf(
@@ -177,21 +178,30 @@ func (r *Runner) generateDepositCall(
 	}
 	validatorPubkey := validatorPrivkey.PublicKey().Marshal()
 
-	// 2. Derive withdrawal key
-	withdrAccPath := fmt.Sprintf("m/12381/3600/%d/0", accountIdx)
-	withdrPrivkey, err := util.PrivateKeyFromSeedAndPath(
-		r.seed, withdrAccPath,
-	)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed generating withdrawal key %s: %w",
-			withdrAccPath, err,
+	// 2. Build withdrawal credentials
+	var withdrCreds []byte
+	if r.cfg.WithdrawalCredPrefix == 0x01 || r.cfg.WithdrawalCredPrefix == 0x02 {
+		// Execution layer credentials: prefix + 11 zero bytes + 20-byte address
+		withdrCreds = make([]byte, 32)
+		withdrCreds[0] = r.cfg.WithdrawalCredPrefix
+		copy(withdrCreds[12:], r.cfg.WithdrawalAddress[:])
+	} else {
+		// BLS credentials (0x00): hash of withdrawal pubkey
+		withdrAccPath := fmt.Sprintf("m/12381/3600/%d/0", accountIdx)
+		withdrPrivkey, err := util.PrivateKeyFromSeedAndPath(
+			r.seed, withdrAccPath,
 		)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed generating withdrawal key %s: %w",
+				withdrAccPath, err,
+			)
+		}
+		withdrPubKey := withdrPrivkey.PublicKey().Marshal()
+		withdrKeyHash := hashing.Hash(withdrPubKey)
+		withdrCreds = withdrKeyHash[:]
+		withdrCreds[0] = common.BLS_WITHDRAWAL_PREFIX
 	}
-	withdrPubKey := withdrPrivkey.PublicKey().Marshal()
-	withdrKeyHash := hashing.Hash(withdrPubKey)
-	withdrCreds := withdrKeyHash[:]
-	withdrCreds[0] = common.BLS_WITHDRAWAL_PREFIX
 
 	// 3. Build deposit data
 	var pub common.BLSPubkey
