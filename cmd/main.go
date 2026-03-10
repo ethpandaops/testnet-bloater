@@ -40,6 +40,7 @@ func main() {
 
 	rootCmd.AddCommand(
 		newDeployTrackerCmd(log),
+		newEnsureTrackerCmd(log),
 		newReadStateCmd(log),
 		newRunDepositsCmd(log),
 		newRunWithdrawalsCmd(log),
@@ -97,6 +98,43 @@ func newDeployTrackerCmd(log *logrus.Logger) *cobra.Command {
 
 			fmt.Printf(
 				`{"contract_address":"%s"}`+"\n",
+				addr.Hex(),
+			)
+			return nil
+		},
+	}
+}
+
+// ensure-tracker subcommand
+func newEnsureTrackerCmd(log *logrus.Logger) *cobra.Command {
+	return &cobra.Command{
+		Use:   "ensure-tracker",
+		Short: "Deploy tracker and set delegation if not already set",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ctx := newContext()
+			trk, err := initTracker(cmd, log)
+			if err != nil {
+				return err
+			}
+			defer trk.Close()
+
+			has, err := trk.HasDelegation(ctx)
+			if err != nil {
+				return fmt.Errorf("delegation check failed: %w", err)
+			}
+
+			if has {
+				fmt.Println(`{"status":"already_set"}`)
+				return nil
+			}
+
+			addr, err := trk.Deploy(ctx)
+			if err != nil {
+				return fmt.Errorf("deploy failed: %w", err)
+			}
+
+			fmt.Printf(
+				`{"status":"deployed","contract_address":"%s"}`+"\n",
 				addr.Hex(),
 			)
 			return nil

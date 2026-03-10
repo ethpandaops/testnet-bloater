@@ -49,14 +49,24 @@ for network in $networks; do
         continue
     fi
 
+    # Ensure tracker delegation is set (deploy if needed)
+    echo "  Checking tracker delegation..."
+    ensure_result=$("$BLOATER_TOOL" ensure-tracker \
+        --rpc-url "$rpc_url" \
+        --private-key "$privkey" \
+        --storage-seed "$storage_seed" 2>/dev/null) || {
+        echo "  WARNING: Failed to ensure tracker delegation for $network, skipping"
+        continue
+    }
+    echo "  Tracker: $ensure_result"
+
     # Read current on-chain state
     echo "  Reading on-chain state..."
     state=$("$BLOATER_TOOL" read-state \
         --rpc-url "$rpc_url" \
         --private-key "$privkey" \
         --storage-seed "$storage_seed" 2>/dev/null) || {
-        echo "  WARNING: Failed to read state (tracker may not be deployed yet)"
-        echo "  Run: $BLOATER_TOOL deploy-tracker --rpc-url $rpc_url --private-key <key>"
+        echo "  WARNING: Failed to read state for $network, skipping"
         continue
     }
 

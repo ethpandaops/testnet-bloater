@@ -111,6 +111,24 @@ func (t *Tracker) GetClient() *spamoor.Client {
 	return t.clientPool.GetClient()
 }
 
+// HasDelegation checks if the wallet EOA has an EIP-7702
+// delegation set (code starts with 0xef0100).
+func (t *Tracker) HasDelegation(ctx context.Context) (bool, error) {
+	client := t.clientPool.GetClient()
+	ethClient := client.GetEthClient()
+
+	code, err := ethClient.CodeAt(ctx, t.eoaAddr, nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to get code: %w", err)
+	}
+
+	// EIP-7702 delegation indicator: 0xef0100 + 20-byte address
+	return len(code) == 23 &&
+		code[0] == 0xef &&
+		code[1] == 0x01 &&
+		code[2] == 0x00, nil
+}
+
 // Deploy deploys the storage contract and sets EIP-7702
 // delegation on the wallet EOA.
 func (t *Tracker) Deploy(
