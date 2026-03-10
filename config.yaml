@@ -1,0 +1,27 @@
+networks:
+  hoodi:
+    rpc_url: "https://rpc.hoodi.ethpandaops.io"
+    dora_url: "https://dora.hoodi.ethpandaops.io"
+    wallet_privkey: "$BLOATER_PRIVKEY"
+    validator_mnemonic: "$BLOATER_MNEMONIC"
+    genesis_fork_version: "0x10000910"
+    storage_seed: "v1"
+    deposit_contract: "0x4242424242424242424242424242424242424242"
+    withdrawal_request_contract: "0x00000961Ef480Eb55e80D19ad83579A64c007002"
+    operations:
+      deposits:
+        enabled: true
+        per_day_limit: 2400
+        max_queue_size: 600
+        total_count: 1000000
+        deposit_amount: 1000000000
+        batch_size: 40
+        storage_update_interval: 50
+      withdrawal_requests:
+        enabled: false
+        per_day_limit: 50
+        max_queue_size: 200
+        total_count: 5000
+        withdraw_amount: 1 # gwei, 0 = full withdrawal (exit)
+        batch_size: 16
+        storage_update_interval: 50

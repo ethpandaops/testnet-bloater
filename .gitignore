@@ -1,0 +1,7 @@
+bloater-tool
+bin/
+.env
+*.key
+contracts/build/
+ai_plans/
+config.local.yaml

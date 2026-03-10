@@ -1,0 +1,31 @@
+name: Testnet Bloater
+
+on:
+  schedule:
+    - cron: '0 */4 * * *' # Every 4 hours
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  bloat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Build bloater-tool
+        run: bash scripts/build.sh
+
+      - name: Run bloater
+        env:
+          BLOATER_PRIVKEY: ${{ secrets.BLOATER_PRIVKEY }}
+          BLOATER_MNEMONIC: ${{ secrets.BLOATER_MNEMONIC }}
+        run: bash scripts/run.sh
