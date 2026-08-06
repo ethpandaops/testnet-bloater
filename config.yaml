@@ -12,8 +12,8 @@ networks:
         enabled: true
         #per_day_limit: 2400
         #max_queue_size: 600
-        per_day_limit: 1600
-        max_queue_size: 400
+        per_day_limit: 3600
+        max_queue_size: 1800
         total_count: 1000000
         deposit_amount: 1000000000
         batch_size: 40
